@@ -28,8 +28,11 @@ go build -o space-shooter .
 
 Pushing to `master` triggers a [GitHub Actions](https://github.com/lostsys311-arch/space-shooter/actions) workflow that builds for:
 
-- **Linux** (`space-shooter-linux`)
-- **Windows** (`space-shooter-windows.exe`)
-- **macOS** (`space-shooter-macos`)
+| Platform | Format |
+|----------|--------|
+| **Linux** | `space-shooter-linux.tar.gz` |
+| **Windows** | `space-shooter-windows.zip` (contains `space-shooter.exe`) |
+| **macOS** | `space-shooter-macos.dmg` |
+| **Android** | `space-shooter.apk` |
 
 Download the artifact for your platform from the Actions tab.

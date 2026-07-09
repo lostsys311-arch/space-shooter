@@ -8,37 +8,100 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            binary_name: space-shooter-linux
-          - os: windows-latest
-            binary_name: space-shooter-windows.exe
-          - os: macos-latest
-            binary_name: space-shooter-macos
-
-    runs-on: ${{ matrix.os }}
-
+  linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      - name: Install Ebitengine dependencies (Linux)
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
-
       - name: Build
-        run: go build -o ${{ matrix.binary_name }} -v .
-
-      - name: Upload artifact
+        run: go build -o space-shooter -v .
+      - name: Package
+        run: tar czf space-shooter-linux.tar.gz space-shooter
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.binary_name }}
-          path: ${{ matrix.binary_name }}
+          name: space-shooter-linux
+          path: space-shooter-linux.tar.gz
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build
+        run: go build -o space-shooter.exe -v .
+      - name: Package
+        run: Compress-Archive -Path space-shooter.exe -DestinationPath space-shooter-windows.zip
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: space-shooter-windows
+          path: space-shooter-windows.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build
+        run: go build -o space-shooter -v .
+      - name: Create app bundle
+        run: |
+          mkdir -p "Space Shooter.app/Contents/MacOS"
+          mkdir -p "Space Shooter.app/Contents/Resources"
+          cp space-shooter "Space Shooter.app/Contents/MacOS/Space Shooter"
+          cat > "Space Shooter.app/Contents/Info.plist" << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>Space Shooter</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.space-shooter.app</string>
+            <key>CFBundleName</key>
+            <string>Space Shooter</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+          </dict>
+          </plist>
+          EOF
+          hdiutil create -volname "Space Shooter" -srcfolder "Space Shooter.app" -ov -format UDZO space-shooter-macos.dmg
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: space-shooter-macos
+          path: space-shooter-macos.dmg
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install gomobile
+        run: go install golang.org/x/mobile/cmd/gomobile@latest
+      - name: Install Ebitengine dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      - name: Init gomobile
+        run: gomobile init
+      - name: Build APK
+        run: gomobile build -target=android -androidapi 21 -o space-shooter.apk .
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: space-shooter-android
+          path: space-shooter.apk
